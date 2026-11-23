@@ -1,3 +1,5 @@
+// Tiny Stack VM competition interpreter.
+// Follows the kit's ISA.md.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -127,15 +129,23 @@ function run(p: Uint8Array, inp: Uint8Array): { out: Uint8Array, code: number } 
   }
 }
 
-for (const id of readdirSync(I).sort()) {
-  const dir = join(I, id);
-  let st;
-  try { st = readFileSync(join(dir, 'program.bin')); } catch { continue; }
-  let inp: Uint8Array;
-  try { inp = new Uint8Array(readFileSync(join(dir, 'input.bin'))); } catch { inp = new Uint8Array(); }
-  const r = run(new Uint8Array(st), inp);
-  const od = join(O, id);
-  mkdirSync(od, { recursive: true });
-  writeFileSync(join(od, 'stdout.bin'), r.out);
-  writeFileSync(join(od, 'exit.txt'), r.code + '\n');
+for (const id of readdirSync(I, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+  if (!id.isDirectory()) continue;
+  const name = id.name;
+  const dir = join(I, name);
+  const od = join(O, name);
+  try {
+    let st: Uint8Array;
+    try { st = new Uint8Array(readFileSync(join(dir, 'program.bin'))); } catch { continue; }
+    let inp: Uint8Array;
+    try { inp = new Uint8Array(readFileSync(join(dir, 'input.bin'))); } catch { inp = new Uint8Array(); }
+    const r = run(st, inp);
+    mkdirSync(od, { recursive: true });
+    writeFileSync(join(od, 'stdout.bin'), r.out);
+    writeFileSync(join(od, 'exit.txt'), r.code + '\n');
+  } catch {
+    mkdirSync(od, { recursive: true });
+    writeFileSync(join(od, 'stdout.bin'), new Uint8Array());
+    writeFileSync(join(od, 'exit.txt'), '255\n');
+  }
 }
